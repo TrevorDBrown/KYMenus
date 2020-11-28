@@ -14,7 +14,7 @@ app.get('/', (req, res) => {
 });
 
 // api - the API Base URL. Making a GET request to this endpoint results in a listing of all public API endpoints.
-app.get('/api/', (req,res) => {
+app.get('/api/', (req, res) => {
     res.status(200).send("Successful request.");
 });
 
