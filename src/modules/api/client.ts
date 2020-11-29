@@ -18,6 +18,10 @@ app.get('/api/', (req, res) => {
     res.status(200).send("Successful request.");
 });
 
+app.get('/api/getAllRestaurants', (req, res) => {
+    res.status(200).send("/api/getAllRestaurants")
+});
+
 app.listen(3000, () => {
     console.log("KYMenus is running on port 3000.");
 });
