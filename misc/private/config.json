@@ -1,0 +1,15 @@
+[
+    {
+        "settingName": "dbAccess",
+        "parameters": [
+            {
+                "parameterName": "username",
+                "value": "Example Username"
+            },
+            {
+                "parameterName": "password",
+                "value": "Example Password"
+            }
+        ]
+    }
+]
