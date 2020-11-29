@@ -1,0 +1,24 @@
+[
+    {
+        "queryName": "GetAllRestaurants",
+        "queryType": "SELECT",
+        "queryTemplate": "SELECT r.restaurant_name, r.address, c.city_name, s.state_name, z.zip_code FROM KYMENUS.RESTAURANT r JOIN KYMENUS.ZIP z ON (r.zip_id = z.zip_id) JOIN KYMENUS.CITY c ON (z.city_id = c.city_id) JOIN KYMENUS.STATE s ON (c.state_id = s.state_id);",
+        "queryInputs": []
+    },
+    {
+        "queryName": "GetHoursByRestaurant",
+        "queryType": "SELECT",
+        "queryTemplate": "SELECT dow.day_of_week, TIME_FORMAT(TIME(h.start), '%r') OpenTime, TIME_FORMAT(TIME(h.end), '%r') CloseTime FROM KYMENUS.HOURS h JOIN KYMENUS.DAY_OF_WEEK dow ON (h.day_id = dow.day_id) WHERE h.restaurant_id = (SELECT r.restaurant_id FROM KYMENUS.RESTAURANT r WHERE r.restaurant_public_id = \"$RestaurantPublicID\")",
+        "queryInputs": [
+            "RestaurantPublicID"
+        ]
+    },
+    {
+        "queryName": "GetMenuItemsByRestaurant",
+        "queryType": "SELECT",
+        "queryTemplate": "SELECT mi.item_name item, mi.item_desc description, mi.price, mi.quantity, mi.uom unit FROM KYMENUS.MENU_ITEM mi JOIN KYMENUS.RESTAURANT r ON (mi.restaurant_id = r.restaurant_id) WHERE r.restaurant_public_id = \"$RestaurantPublicID\"",
+        "queryInputs": [
+            "RestaurantPublicID"
+        ]
+    }
+]
