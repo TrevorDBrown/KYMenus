@@ -17,7 +17,7 @@ import {DBConnection, Query, QueryResult} from '../../types/databaseTypes';
 function queryDatabase (query: Query, dbConnection: mysql.Connection, callback: (requestStatus: Status, queryResponse: QueryResult) => void): void {
     dbConnection.connect();
 
-    dbConnection.query(<string>query.queryTemplate, (error: mysql.QueryError, rows: mysql.RowDataPacket[]) => {
+    dbConnection.query(<string>query.queryInstance, (error: mysql.QueryError, rows: mysql.RowDataPacket[]) => {
         var requestStatus: Status;
         var queryResults: string[] = [];
 
@@ -52,21 +52,45 @@ function queryDatabase (query: Query, dbConnection: mysql.Connection, callback: 
 function connectToDatabase (callback: (requestStatus: Status, dbConnection: mysql.Connection) => void): void {
     var requestStatus: Status;
 
-    // var dbConfigLookup = appConfig.find(i => i.settingName === "dbAccess");
+    var dbHost: string = "";
+    var dbPort: number = 0;
+    var dbUsername: string = "";
+    var dbPassword: string = "";
+
+    var dbConfigLookup = appConfig.find(i => i.settingName === "dbConfig");
     
-    // if (dbConfigLookup){
-    //     requestStatus = "Success";
-    //     var username = dbConfigLookup.parameters.find(i => i.parameterName === "username")
-        
-    // }else {
-    //     requestStatus = "Error";
-    // }
+    if (dbConfigLookup){
+        dbConfigLookup["parameters"].forEach(parameter => {
+            switch (parameter.parameterName) {
+                case "host": {
+                    dbHost = parameter.value;
+                    break;
+                }
+                case "port": {
+                    dbPort = parseInt(parameter.value);
+                }
+                case "username": {
+                    dbUsername = parameter.value;
+                    break;
+                }
+                case "password": {
+                    dbPassword = parameter.value;
+                    break;
+                }
+                default: {
+                    console.log("Error - parameter not defined.");
+                    break;
+                }
+                    
+            }
+        });
+    }
 
     const dbConnection = mysql.createConnection({
-        host: "host",
-        port: 3306,
-        user: "username",
-        password: "password",
+        host: dbHost,
+        port: dbPort,
+        user: dbUsername,
+        password: dbPassword,
         database: "KYMENUS"
     });
 
@@ -81,38 +105,70 @@ function connectToDatabase (callback: (requestStatus: Status, dbConnection: mysq
 }
 
 // Query Input Injection Function (if applicable...)
+function queryInputInjection (query: Query, input: [{field: string; value: string;}], callback: (status: Status) => void): void {
+    var queryToUpdate = query.queryTemplate;
+    var processingStatus: Status;
+
+    input.forEach(entry => {
+        var fieldToReplace: string = "\$" + entry.field;
+        queryToUpdate = queryToUpdate.replace(fieldToReplace, entry.value);
+    });
+
+    query.queryInstance = queryToUpdate;
+
+    processingStatus = "Success";
+
+    callback(processingStatus);
+}
 
 // Query Lookup Function
-function queryLookup (query: Query, callback: (status: Status) => void): void {
+function queryLookup (queryName: string, callback: (status: Status, queryObject: Query) => void): void {
     var queryRequestStatus: Status;
+    var newQuery: Query;
 
-    var queryDictionaryLookup = queryDictionary.find(i => i.queryName === query.queryName);
+    var queryDictionaryLookup = queryDictionary.find(i => i.queryName === queryName);
 
     if (queryDictionaryLookup){
         queryRequestStatus = "Success";
-        //query.queryType = queryDictionaryLookup.queryType;
-        query.queryTemplate = queryDictionaryLookup.queryTemplate;
+        
+        // Initialize a Query object.
+        newQuery = {
+            queryName: queryName,
+            queryType: queryDictionaryLookup.queryType,
+            queryInput: queryDictionaryLookup.queryInputs,
+            queryTemplate: queryDictionaryLookup.queryTemplate
+        };
+
+
     }else{
         queryRequestStatus = "Error";
+        
+        newQuery = {
+            queryName: "Unknown",
+            queryType: "Unknown",
+            queryInput: ["Unknown"],
+            queryTemplate: "Unknown"
+        };
     }
 
-    callback(queryRequestStatus);
+    callback(queryRequestStatus, newQuery);
 } 
 
 // Publicly exposed function for query calls
-export function executeQuery (queryName: string, callback: (requestStatus: Status, queryFound?: QueryResult) => void, queryInput?: string[]): void {
+export function executeQuery (queryName: string, callback: (requestStatus: Status, queryFound?: QueryResult) => void, queryInput: [{field: string; value: string;}]): void {
     
-    // Initialize a Query object.
-    var newQuery: Query = {
-        queryName: queryName
-    };
-
-    queryLookup(newQuery, (requestStatus) => {
+    queryLookup(queryName, (requestStatus, newQuery) => {
         if (requestStatus == "Success"){
-            connectToDatabase((requestStatus, dbConnection) => {
+            queryInputInjection(newQuery, queryInput, (requestStatus) => {
                 if (requestStatus == "Success"){
-                    queryDatabase (newQuery, dbConnection, (requestStatus, queryResponse) => {
-                        callback(requestStatus, queryResponse);
+                    connectToDatabase((requestStatus, dbConnection) => {
+                        if (requestStatus == "Success"){
+                            queryDatabase (newQuery, dbConnection, (requestStatus, queryResponse) => {
+                                callback(requestStatus, queryResponse);
+                            });
+                        }else{
+                            callback(requestStatus);
+                        }
                     });
                 }else{
                     callback(requestStatus);
