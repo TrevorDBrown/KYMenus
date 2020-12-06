@@ -17,10 +17,11 @@ export interface DBConnection {
 
 export interface Query {
     queryName: string;
-    queryType?: QueryType;
-    queryTemplate?: string;
-    queryInput?: string[];
-    queryInputs?: string[];
+    queryType: string; //QueryType;
+    queryTemplate: string;
+    queryInput: string[];
+    queryInputValues?: string[];
+    queryInstance?: string;
     dbConnection?: DBConnection;
 }
 
