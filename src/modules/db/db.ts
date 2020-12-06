@@ -7,21 +7,23 @@
 */
 
 import * as mysql from 'mysql';
+import * as async from 'async';
 import queryDictionary = require('./../../support/db/queries.json');
 import appConfig = require('./../../private/config.json')
 
-import {Status} from "../../types/generalTypes";
 import {DBConnection, Query, QueryResult} from '../../types/databaseTypes';
 
 // Query Database
-function queryDatabase (query: Query, dbConnection: mysql.Connection, callback: (requestStatus: Status, queryResponse: QueryResult) => void): void {
+function queryDatabase (query: Query, dbConnection: mysql.Connection, callback: (requestStatus: string, queryResponse?: QueryResult, error?: Error) => void): void {
     dbConnection.connect();
 
-    dbConnection.query(<string>query.queryInstance, (error: mysql.QueryError, rows: mysql.RowDataPacket[]) => {
-        var requestStatus: Status;
+    dbConnection.query(<string>query.queryInstance, (dbError: mysql.QueryError, rows: mysql.RowDataPacket[]) => {
+        var requestStatus: string = "";
         var queryResults: string[] = [];
+        var mysqlQueryResponse: QueryResult;
+        var error: Error;
 
-        if (!error){
+        if (!dbError){
             requestStatus = "Success";
 
             if (rows){
@@ -32,25 +34,34 @@ function queryDatabase (query: Query, dbConnection: mysql.Connection, callback: 
                 queryResults = [];
             }
 
+            mysqlQueryResponse = {
+                "query": query,
+                "queryResults": queryResults
+            };
+    
+            dbConnection.end();
+            
+            callback(requestStatus, mysqlQueryResponse);
+
         }else{
             requestStatus = "Error";
             queryResults = [];
+            error = <Error>dbError;
+
+            mysqlQueryResponse = {
+                "query": query,
+                "queryResults": queryResults
+            };
+
+            dbConnection.end();
+            callback(requestStatus, mysqlQueryResponse, error);
         }
-
-        var mysqlQueryResponse: QueryResult = {
-            "query": query,
-            "queryResults": queryResults
-        };
-
-        dbConnection.end();
-        
-        callback(requestStatus, mysqlQueryResponse);
     });
 }
 
 // Establish Database Connection
-function connectToDatabase (callback: (requestStatus: Status, dbConnection: mysql.Connection) => void): void {
-    var requestStatus: Status;
+function connectToDatabase (callback: (requestStatus: string, dbConnection: mysql.Connection, error?: Error) => void): void {
+    var requestStatus: string = "";
 
     var dbHost: string = "";
     var dbPort: number = 0;
@@ -68,6 +79,7 @@ function connectToDatabase (callback: (requestStatus: Status, dbConnection: mysq
                 }
                 case "port": {
                     dbPort = parseInt(parameter.value);
+                    break;
                 }
                 case "username": {
                     dbUsername = parameter.value;
@@ -94,24 +106,20 @@ function connectToDatabase (callback: (requestStatus: Status, dbConnection: mysq
         database: "KYMENUS"
     });
 
-    if (dbConnection){
-        requestStatus = "Success";
-    }else{
-        requestStatus = "Error"
-    }
+    requestStatus = "Success";
 
     callback(requestStatus, dbConnection);
 
 }
 
 // Query Input Injection Function (if applicable...)
-function queryInputInjection (query: Query, input: [{field: string; value: string;}], callback: (status: Status) => void): void {
+function queryInputInjection (query: Query, input: [{field: string; value: string;}], callback: (status: string, error?: Error) => void): void {
     var queryToUpdate = query.queryTemplate;
-    var processingStatus: Status;
+    var processingStatus: string = "";
 
     input.forEach(entry => {
-        var fieldToReplace: string = "\$" + entry.field;
-        queryToUpdate = queryToUpdate.replace(fieldToReplace, entry.value);
+        var fieldToReplace: string = "~" + entry.field;
+        queryToUpdate = queryToUpdate.replace(fieldToReplace, "= '" + entry.value + "'");
     });
 
     query.queryInstance = queryToUpdate;
@@ -122,8 +130,8 @@ function queryInputInjection (query: Query, input: [{field: string; value: strin
 }
 
 // Query Lookup Function
-function queryLookup (queryName: string, callback: (status: Status, queryObject: Query) => void): void {
-    var queryRequestStatus: Status;
+function queryLookup (queryName: string, callback: (status: string, queryObject: Query, error?: Error) => void): void {
+    var queryRequestStatus: string = "";
     var newQuery: Query;
 
     var queryDictionaryLookup = queryDictionary.find(i => i.queryName === queryName);
@@ -138,7 +146,6 @@ function queryLookup (queryName: string, callback: (status: Status, queryObject:
             queryInput: queryDictionaryLookup.queryInputs,
             queryTemplate: queryDictionaryLookup.queryTemplate
         };
-
 
     }else{
         queryRequestStatus = "Error";
@@ -155,28 +162,61 @@ function queryLookup (queryName: string, callback: (status: Status, queryObject:
 } 
 
 // Publicly exposed function for query calls
-export function executeQuery (queryName: string, callback: (requestStatus: Status, queryFound?: QueryResult) => void, queryInput: [{field: string; value: string;}]): void {
-    
-    queryLookup(queryName, (requestStatus, newQuery) => {
-        if (requestStatus == "Success"){
-            queryInputInjection(newQuery, queryInput, (requestStatus) => {
-                if (requestStatus == "Success"){
-                    connectToDatabase((requestStatus, dbConnection) => {
-                        if (requestStatus == "Success"){
-                            queryDatabase (newQuery, dbConnection, (requestStatus, queryResponse) => {
-                                callback(requestStatus, queryResponse);
-                            });
-                        }else{
-                            callback(requestStatus);
-                        }
-                    });
+export function executeQuery (queryName: string, callback: (requestStatus: string, queryFound?: QueryResult, error?: Error) => void, queryInput?: [{field: string; value: string;}]): void {
+    var newQuery: Query;
+    var queryResponse: QueryResult;
+    var dbConnection: mysql.Connection;
+
+    async.series([
+        function(callback){
+            queryLookup(queryName, (requestStatus, query, error) => {
+                if (requestStatus === "Success"){
+                    newQuery = query;
+                    callback(null, newQuery);
                 }else{
-                    callback(requestStatus);
+                    callback(error, null);
                 }
             });
+        },
+        function(callback){
+            if (queryInput){
+                queryInputInjection(newQuery, queryInput, (requestStatus, error) => {
+                    if (requestStatus === "Success"){
+                        callback(null, newQuery);
+                    }else{
+                        callback(error, null);
+                    }
+                });
+            }else{
+                newQuery.queryInstance = newQuery.queryTemplate;
+                callback(null, newQuery);
+            }
+        },
+        function(callback){
+            connectToDatabase((requestStatus, connection, error) => {
+                if (requestStatus === "Success"){
+                    dbConnection = connection;
+                    callback(null, dbConnection);
+                }else{
+                    callback(error, null);
+                }
+            });
+        },
+        function(callback){
+            queryDatabase(newQuery, dbConnection, (requestStatus, queryResult, error) => {
+                if (requestStatus === "Success"){
+                    queryResponse = <QueryResult>queryResult;
+                    callback(null, queryResponse);
+                }else{
+                    callback(error, null);
+                }
+            });
+        }
+    ], function(error, results){
+        if (!error){
+            callback("Success", queryResponse);
         }else{
-            callback(requestStatus);
+            callback("Error", undefined, error);
         }
     });
-
 }
