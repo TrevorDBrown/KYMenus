@@ -11,5 +11,22 @@
                 "value": "Example Password"
             }
         ]
+    },
+    {
+        "settingName": "expressPorts",
+        "parameters": [
+            {
+                "parameterName": "apiPort",
+                "value": 3000
+            },
+            {
+                "parameterName": "clientUIPort",
+                "value": 3001
+            },
+            {
+                "parameterName": "adminUIPort",
+                "value": 3002
+            }
+        ]
     }
 ]
