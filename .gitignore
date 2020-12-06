@@ -163,5 +163,4 @@ dist
 
 # Project-specific
 # src/private - contains files specific and private to a specific instance of the project.
-src/private 
-
+src/private
