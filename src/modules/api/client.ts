@@ -11,7 +11,6 @@ const app: express.Application = express();
 app.use(express.json())
 app.use(express.urlencoded({extended: true}));
 
-import * as generalTypes from './../../types/generalTypes'
 import * as dbInterface from './../db/db';
 
 // / - the Base URL for the site. Making a GET request to this endpoint results in the homepage of the site being sent.
@@ -24,22 +23,23 @@ app.get('/api/', (req, res) => {
     res.status(200).send("Successful request.");
 });
 
-// app.get('/api/getAllRestaurants', (req, res) => {
-    
-//     dbInterface.executeQuery("GetAllRestaurants", (requestStatus, queryResults) => {
-//         var response = {
-//             "status": requestStatus,
-//             "queryResponse": queryResults
-//         };
-        
-//         res.status(200).send(response);
-//     });
+app.get('/api/getAllRestaurants', (req, res) => {
 
-// });
+    dbInterface.executeQuery("GetAllRestaurants", (requestStatus, queryResults, error) => {
+        var response = {
+            "status": requestStatus,
+            "queryResponse": queryResults,
+            "error": error
+        };
+        
+        res.status(200).send(response);
+    });
+
+});
 
 app.get('/api/getMenusWithMenuItemsByRestaurant', (req, res) => {
     
-    var requestStatus: generalTypes.Status;
+    var requestStatus: string = "";
 
     if (!req.body.restaurantPublicID){
         requestStatus = "Error";
@@ -55,10 +55,11 @@ app.get('/api/getMenusWithMenuItemsByRestaurant', (req, res) => {
             value: req.body.restaurantPublicID
         }];
         
-        dbInterface.executeQuery("GetMenusWithMenuItemsByRestaurant", (requestStatus, queryResults) => {
+        dbInterface.executeQuery("GetMenusWithMenuItemsByRestaurant", (requestStatus, queryResults, error) => {
             var response = {
                 "status": requestStatus,
-                "queryResponse": queryResults
+                "queryResponse": queryResults,
+                "error": error
             };
             
             res.status(200).send(response);
