@@ -24,18 +24,18 @@ app.get('/api/', (req, res) => {
     res.status(200).send("Successful request.");
 });
 
-app.get('/api/getAllRestaurants', (req, res) => {
+// app.get('/api/getAllRestaurants', (req, res) => {
     
-    dbInterface.executeQuery("GetAllRestaurants", (requestStatus, queryResults) => {
-        var response = {
-            "status": requestStatus,
-            "queryResponse": queryResults
-        };
+//     dbInterface.executeQuery("GetAllRestaurants", (requestStatus, queryResults) => {
+//         var response = {
+//             "status": requestStatus,
+//             "queryResponse": queryResults
+//         };
         
-        res.status(200).send(response);
-    });
+//         res.status(200).send(response);
+//     });
 
-});
+// });
 
 app.get('/api/getMenusWithMenuItemsByRestaurant', (req, res) => {
     
@@ -50,7 +50,11 @@ app.get('/api/getMenusWithMenuItemsByRestaurant', (req, res) => {
         }
         res.status(400).send(response);
     }else {
-        var input: string[] = [req.body.restaurantPublicID]
+        var input: [{field: string; value: string;}] = [{
+            field: "RestaurantPublicID",
+            value: req.body.restaurantPublicID
+        }];
+        
         dbInterface.executeQuery("GetMenusWithMenuItemsByRestaurant", (requestStatus, queryResults) => {
             var response = {
                 "status": requestStatus,
@@ -58,7 +62,8 @@ app.get('/api/getMenusWithMenuItemsByRestaurant', (req, res) => {
             };
             
             res.status(200).send(response);
-        });
+        },
+        input);
     }
 
 });
