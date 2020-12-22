@@ -17,7 +17,7 @@ export interface DBConnection {
 
 export interface Query {
     queryName: string;
-    queryType: string; //QueryType;
+    queryType: string;
     queryTemplate: string;
     queryInput: string[];
     queryInputValues?: string[];
