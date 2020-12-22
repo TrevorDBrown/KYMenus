@@ -1,0 +1,20 @@
+#kym-header {
+    padding: 0px;
+}
+
+#kym-header > .row {
+    width: 100%;
+    margin: 0px;
+}
+
+#kym-header > .row > [class^="col-"] {
+    width: 100%;
+    padding: 0px;
+}
+
+#kym-footer {
+    position: absolute;
+    bottom: 0px;
+    text-align: center;
+    color: #ffffff;
+}
