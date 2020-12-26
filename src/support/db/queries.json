@@ -14,7 +14,7 @@
         ]
     },
     {
-        "queryName": "GetHoursByRestaurant",
+        "queryName": "GetHoursByRestaurantPublicID",
         "queryType": "SELECT",
         "queryTemplate": "SELECT dow.day_of_week, IF(h.special_hours=0, TIME_FORMAT(TIME(h.start), '%r'), h.start) OpenTime, IF(h.special_hours=0, TIME_FORMAT(TIME(h.end), '%r'), h.end) CloseTime, IF (h.is_open=1, 'Open', 'Closed') OperatingStatus, IF (h.special_hours=1, 'Yes', 'No') SpecialHours FROM KYMENUS.HOURS h JOIN KYMENUS.DAY_OF_WEEK dow ON (h.day_id = dow.day_id) WHERE h.restaurant_id = (SELECT r.restaurant_id FROM KYMENUS.RESTAURANT r WHERE r.restaurant_public_id ~RestaurantPublicID)",
         "queryInputs": [
@@ -22,7 +22,7 @@
         ]
     },
     {
-        "queryName": "GetMenuItemsByRestaurant",
+        "queryName": "GetMenuItemsByRestaurantPublicID",
         "queryType": "SELECT",
         "queryTemplate": "SELECT mi.item_name item, mi.item_desc description, mi.price, mi.quantity, mi.uom unit FROM KYMENUS.MENU_ITEM mi JOIN KYMENUS.RESTAURANT r ON (mi.restaurant_id = r.restaurant_id) WHERE r.restaurant_public_id ~RestaurantPublicID",
         "queryInputs": [
@@ -30,7 +30,7 @@
         ]
     },
     {
-        "queryName": "GetMenusWithMenuItemsByRestaurant",
+        "queryName": "GetMenusWithMenuItemsByRestaurantPublicID",
         "queryType": "SELECT",
         "queryTemplate": "SELECT mc.category_name Menu, mic.category_name MenuSection, mi.item_name Name, mi.item_desc Description, ROUND(IF(mimp.price_override IS NOT NULL, mimp.price_override, mi.price), 2) Price, IF(mimp.quantity_override IS NOT NULL, mimp.quantity_override, mi.quantity) Quantity, IF(mimp.uom_override IS NOT NULL, mimp.uom_override, mi.uom) Unit FROM KYMENUS.RESTAURANT r JOIN KYMENUS.MENU m ON (r.restaurant_id = m.restaurant_id) JOIN KYMENUS.MENU_CATEGORY mc ON (m.menu_category_id = mc.category_id) JOIN KYMENUS.MENU_ITEM_MENU_PAIR mimp ON (m.menu_id = mimp.menu_id) JOIN KYMENUS.MENU_ITEM mi ON (mimp.menu_item_id= mi.menu_item_id) LEFT JOIN KYMENUS.MENU_ITEM_CATEGORY_MENU_ITEM_PAIR micmip ON (mi.menu_item_id = micmip.menu_item_id) LEFT JOIN KYMENUS.MENU_ITEM_CATEGORY mic ON (micmip.menu_item_category_id = mic.category_id) WHERE r.restaurant_public_id ~RestaurantPublicID",
         "queryInputs": [
