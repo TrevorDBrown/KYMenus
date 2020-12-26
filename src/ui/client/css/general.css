@@ -13,8 +13,11 @@
 }
 
 #kym-footer {
-    position: absolute;
-    bottom: 0px;
     text-align: center;
     color: #ffffff;
+}
+
+#kym-footer.footer-fixed {
+    position: absolute;
+    bottom: 0px;
 }
