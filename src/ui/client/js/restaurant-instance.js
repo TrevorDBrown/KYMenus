@@ -3,7 +3,7 @@ $(() => {
         if (restaurantData){
             populatePageFields(restaurantData["queryResponse"]);
         }
-    }).then(function(){
+    }).then(function(error){
         refitFooter();
     });    
 });
@@ -12,7 +12,6 @@ function refitFooter(){
     var footerElement = $("#kym-footer");
 
     if (footerElement.prev().height() >= screen.height){
-        console.log("Body exceeds screen height.");
         footerElement.removeClass("footer-fixed");
     }
 }
@@ -31,6 +30,7 @@ function getRestaurantData(restaurantPublicID){
 
 function populatePageFields(allRestaurantData){
     var restaurantNameElement = $("#kym-restaurant-name");
+    var restaurantOpenStatusElement = $("#kym-restaurant-open-status");
     var restaurantAddressElement = $("#kym-restaurant-address");
     var restaurantHoursElement = $("#kym-restaurant-hours");
     var restaurantMenuElement = $("#kym-restaurant-menu");
@@ -43,39 +43,52 @@ function populatePageFields(allRestaurantData){
 
     restaurantNameElement.text(basicRestaurantData["restaurant_name"]);
 
+    restaurantOpenStatusElement.text(determineOperatingStatus(restaurantHoursData));
+
     restaurantAddressElement.append(basicRestaurantData["address"]);
     restaurantAddressElement.append($("<br />"));
     restaurantAddressElement.append(basicRestaurantData["city_name"] + ", " + basicRestaurantData["state_name"] + " " + basicRestaurantData["zip_code"]);
-
-    restaurantHoursElement.text("Hours");
-    restaurantHoursElement.append($("<br />"));
     
     restaurantHoursData.forEach(dataElement => {
-        restaurantHoursElement.append($("<br />"));
-        restaurantHoursElement.append(dataElement["day_of_week"] + ":&emsp;" + dataElement["OpenTime"] + " - " + dataElement["CloseTime"]);
+        var newHoursCard = $("<div>", {
+            "class": "card"
+        });
+
+        var newHoursCardBody = $("<div>", {
+            "class": "card-body"
+        });
+
+        var newHoursCardTitle = $("<h4>", {
+            "class": "card-title"
+        });
+
+        var newHoursCardText = $("<p>", {
+            "class": "card-text"
+        });
+
+        newHoursCardTitle.text(dataElement["day_of_week"]);
+        newHoursCardText.text(convertToPreferredTime(dataElement["OpenTime"]) + " - " + convertToPreferredTime(dataElement["CloseTime"]));
+
+        newHoursCardBody.append(newHoursCardTitle);
+        newHoursCardBody.append(newHoursCardText);
+
+        newHoursCard.append(newHoursCardBody);
+
+        restaurantHoursElement.append(newHoursCard);
     });
 
     var restaurantCategoryElementTemplate = $("<div>", {
         "class": "card"
     });
 
-    var restaurantCategoryElements = [];
+    restaurantMenuData.forEach(dataElement => { 
+        var currentRestaurantCategoryCard = restaurantMenuElement.find("div[data-category='" + dataElement["MenuSection"].replace("'", "_") + "']");      // Escaping the field, because single quotes break this. :/ 
 
-    restaurantMenuData.forEach(dataElement => {
-        var elementExists = false;
-
-        restaurantCategoryElements.forEach(element => {
-            if (element.attr("data-category") == dataElement["MenuSection"]){
-                elementExists = true;
-                
-                var existingRestaurantCategoryBody = element.find(".card-body");
-
-                existingRestaurantCategoryBody.append($("<br />"));
-                existingRestaurantCategoryBody.append(dataElement["Name"] + ":&emsp;" + dataElement["Price"]);
-            }
-        });
-
-        if (!elementExists){
+        if (currentRestaurantCategoryCard.length > 0){
+            var existingRestaurantCategoryBody = currentRestaurantCategoryCard.find(".card-body").first();
+            existingRestaurantCategoryBody.append($("<br />"));
+            existingRestaurantCategoryBody.append(generateMenuItemCard(dataElement));
+        }else {
             var newRestaurantCategoryElement = restaurantCategoryElementTemplate.clone();
             var newRestaurantCategoryElementHeader = $("<div>", {
                 "class": "card-header"
@@ -85,20 +98,102 @@ function populatePageFields(allRestaurantData){
                 "class": "card-body"
             });
 
-            newRestaurantCategoryElement.attr("data-category", dataElement.MenuSection);
+            newRestaurantCategoryElement.attr("data-category", dataElement["MenuSection"].replace("'", "_"));
             newRestaurantCategoryElementHeader.text(dataElement["MenuSection"]);
-            newRestaurantCategoryElementBody.append(dataElement["Name"] + ":&emsp;" + dataElement["Price"]);
+            newRestaurantCategoryElementBody.append(generateMenuItemCard(dataElement));
             
             newRestaurantCategoryElement.append(newRestaurantCategoryElementHeader);
             newRestaurantCategoryElement.append(newRestaurantCategoryElementBody);
 
-            restaurantCategoryElements.push(newRestaurantCategoryElement);
+            restaurantMenuElement.append(newRestaurantCategoryElement);
             
         }
     });
 
-    restaurantCategoryElements.forEach(element => {
-        restaurantMenuElement.append(element);
+}
+
+function generateMenuItemCard(specifiedRestaurantMenuData){    
+    var newMenuItemCard = $("<div>", {
+        "class": "card",
+        "data-menu-item": specifiedRestaurantMenuData["Name"]
     });
+
+    var newMenuItemCardBody = $("<div>", {
+        "class": "card-body"
+    });
+
+    var newMenuItemCardTitle = $("<h4>", {
+        "class": "card-title"
+    });
+    
+    var newMenuItemCardText = $("<p>", {
+        "class": "card-text"
+    })
+
+    newMenuItemCardTitle.text(specifiedRestaurantMenuData["Name"]);
+    newMenuItemCardText.text(convertToPrice(parseFloat(specifiedRestaurantMenuData["Price"])));
+
+    newMenuItemCardBody.append(newMenuItemCardTitle);
+    newMenuItemCardBody.append(newMenuItemCardText);
+
+    newMenuItemCard.append(newMenuItemCardBody);
+
+    return newMenuItemCard;
+
+}
+
+function convertToPrice(floatValue){
+    return "$" + floatValue.toFixed(2);
+}
+
+function convertToPreferredTime(timeString){
+    return new Date("1/1/2000 " + timeString).toLocaleTimeString("en-us", {timeStyle: 'short'});
+}
+
+function determineOperatingStatus(restaurantHoursData) {
+    var operatingStatusString = "";
+
+    var currentDateTime = new Date();
+    var dayOfWeek = currentDateTime.toLocaleDateString("en-us", {weekday: 'long'});
+
+    var entryFound = false;
+
+    restaurantHoursData.forEach(dataElement => {
+        if (!entryFound){
+            if (dataElement["day_of_week"] == dayOfWeek){
+                entryFound = true;
+                
+                // TODO: figure out better way to do this date conversion...
+                var startTime = new Date("1/1/2000 " + dataElement["OpenTime"]);
+                var endTime = new Date("1/1/2000 " + dataElement["CloseTime"]);
+                var rangeOperatingStatus = dataElement["OperatingStatus"];
+
+                startTime.setFullYear(currentDateTime.getFullYear());
+                startTime.setMonth(currentDateTime.getMonth());
+                startTime.setDate(currentDateTime.getDate());
+
+                endTime.setFullYear(currentDateTime.getFullYear());
+                endTime.setMonth(currentDateTime.getMonth());
+                endTime.setDate(currentDateTime.getDate());
+
+                if (startTime <= currentDateTime && currentDateTime <= endTime){
+                    operatingStatusString = rangeOperatingStatus;
+                }else {
+                    if (rangeOperatingStatus == "Open"){
+                        operatingStatusString = "Closed";
+                    }else{
+                        operatingStatusString = "Open";
+                    }
+                }
+
+            }
+        }
+    });
+
+    if (!entryFound){
+        operatingStatusString = "Unknown";
+    }
+
+    return operatingStatusString;
 
 }
