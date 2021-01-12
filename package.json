@@ -7,7 +7,8 @@
     "removeUI": "rm -rf ./bin/ui/",
     "copyUI": "mkdir ./bin/ui/ && cp -r ./src/ui/* ./bin/ui/",
     "copyPrivate": "cp -r ./src/private/* ./bin/private/",
-    "build": "rm -r ./bin && tsc && npm run copyUI && npm run copyPrivate",
+    "copySupport": "cp -r ./src/support/* ./bin/support/",
+    "build": "rm -rf ./bin/* && tsc && npm run copyUI && npm run copyPrivate && npm run copySupport",
     "cleanAllRun": "npm run build && node .",
     "cleanUIRun": "npm run removeUI && npm run copyUI && node .",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -26,12 +27,14 @@
     "@fortawesome/fontawesome-free": "^5.15.1",
     "async": "^3.2.0",
     "bootstrap": "^4.5.3",
+    "cheerio": "^1.0.0-rc.5",
     "express": "^4.17.1",
     "jquery": "^3.5.1",
     "mysql": "^2.18.1"
   },
   "devDependencies": {
     "@types/async": "^3.2.5",
+    "@types/cheerio": "^0.22.23",
     "@types/express": "^4.17.8",
     "@types/jquery": "^3.5.5",
     "@types/mysql": "github:types/mysql",
