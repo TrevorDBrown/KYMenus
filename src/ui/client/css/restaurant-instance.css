@@ -1,3 +1,7 @@
 #kym-restaurant-header {
     text-align: center;
 }
+
+.kym-menu-category-card, .kym-hours-entry-card, .kym-base-card{
+    margin: 10px;
+}
