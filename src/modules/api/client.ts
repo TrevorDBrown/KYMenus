@@ -1,6 +1,6 @@
 /*
     KYMenus
-    (c)2020 Trevor D. Brown. All rights reserved.
+    (c)2020-2021 Trevor D. Brown. All rights reserved.
     
     client.ts - the client API for the service.
 */
@@ -8,7 +8,8 @@
 import path = require('path');
 import express = require('express');
 import async = require('async');
-var dbInterface = require('./../db/db');
+var dbModule = require('./../db/db');
+var uiModule = require('./../ui/ui');
 import { QueryResult } from '../../types/databaseTypes';
 
 const app: express.Application = express();
@@ -46,7 +47,16 @@ app.get('/restaurants', (req, res) => {
 });
 
 app.get('/restaurants/:RestaurantPublicID', (req, res) => {
-    res.status(200).sendFile(path.join(__dirname, './../../ui/client/restaurant-template.html'));
+    var responseFromGenerateRestaurantPage: {status?: string, error?: string, html?: string} = uiModule.generateRestaurantPage();
+
+    // TODO: break out api endpoint function for getting restaurant data. Create new file for data inquiry, call from endpoint for api and here...
+    if (responseFromGenerateRestaurantPage.html){
+        res.status(200).send(responseFromGenerateRestaurantPage.html);
+    }else{
+        res.status(404).send("File not found.");
+    }
+
+    //res.status(200).sendFile(path.join(__dirname, './../../ui/client/restaurant-template.html'));
 });
 
 /* 
@@ -59,7 +69,7 @@ app.get('/api/', (req, res) => {
 
 app.get('/api/getAllRestaurants', (req, res) => {
 
-    dbInterface.executeQuery("GetAllRestaurants", (requestStatus: string, queryResults: QueryResult, error: Error) => {
+    dbModule.executeQuery("GetAllRestaurants", (requestStatus: string, queryResults: QueryResult, error: Error) => {
         var response = {
             "status": requestStatus,
             "queryResponse": queryResults,
@@ -93,7 +103,7 @@ app.post('/api/getRestaurantByPublicID', (req, res) => {
                     value: req.body.restaurantPublicID
                 }];
 
-                dbInterface.executeQuery("GetRestaurantByRestaurantPublicID", (requestStatus: string, queryResults: QueryResult, error: Error) => {
+                dbModule.executeQuery("GetRestaurantByRestaurantPublicID", (requestStatus: string, queryResults: QueryResult, error: Error) => {
                     if (!error){
                         response = {
                             status: "Success",
@@ -114,7 +124,7 @@ app.post('/api/getRestaurantByPublicID', (req, res) => {
                     value: req.body.restaurantPublicID
                 }];
 
-                dbInterface.executeQuery("GetHoursByRestaurantPublicID", (requestStatus: string, queryResults: QueryResult, error: Error) => {
+                dbModule.executeQuery("GetHoursByRestaurantPublicID", (requestStatus: string, queryResults: QueryResult, error: Error) => {
                     if (!error){
                         response.queryResponse.push(queryResults);
                         callback(null);
@@ -130,7 +140,7 @@ app.post('/api/getRestaurantByPublicID', (req, res) => {
                     value: req.body.restaurantPublicID
                 }];
 
-                dbInterface.executeQuery("GetMenusWithMenuItemsByRestaurantPublicID", (requestStatus: string, queryResults: QueryResult, error: Error) => {
+                dbModule.executeQuery("GetMenusWithMenuItemsByRestaurantPublicID", (requestStatus: string, queryResults: QueryResult, error: Error) => {
                     if (!error){
                         response.queryResponse.push(queryResults);
                         callback(null);
@@ -171,7 +181,7 @@ app.get('/api/getMenusWithMenuItemsByRestaurant', (req, res) => {
             value: req.body.restaurantPublicID
         }];
         
-        dbInterface.executeQuery("GetMenusWithMenuItemsByRestaurant", (requestStatus: string, queryResults: QueryResult, error: Error) => {
+        dbModule.executeQuery("GetMenusWithMenuItemsByRestaurant", (requestStatus: string, queryResults: QueryResult, error: Error) => {
             var response = {
                 "status": requestStatus,
                 "queryResponse": queryResults,
