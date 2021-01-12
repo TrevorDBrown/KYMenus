@@ -5,21 +5,35 @@ $(() => {
         }
     }).then(function(error){
         refitFooter();
-    });    
+    });
+    
 });
 
 function refitFooter(){
     var footerElement = $("#kym-footer");
 
-    if (footerElement.prev().height() >= screen.height){
+    var windowHeight = $(window).height();
+    var headerHeight = $("#kym-header").height();
+    var bodyHeight = $("#kym-body").height();
+    var footerHeight = footerElement.height();
+
+    var sumOfElementHeights = headerHeight + bodyHeight + footerHeight;
+
+    console.log("Sum of Heights: " + sumOfElementHeights);
+    console.log("Window Height: " + windowHeight);
+
+    if (sumOfElementHeights >= windowHeight){
         footerElement.removeClass("footer-fixed");
+    }else{
+        if (!footerElement.hasClass("footer-fixed")){
+            footerElement.addClass("footer-fixed");
+        }
     }
 }
 
 function getRestaurantData(restaurantPublicID){
     return $.ajax({
         'async': true,
-        'global': false,
         'url': "./../api/getRestaurantByPublicID",
         'data': {
           'restaurantPublicID': restaurantPublicID
@@ -29,7 +43,7 @@ function getRestaurantData(restaurantPublicID){
 }
 
 function populatePageFields(allRestaurantData){
-    var restaurantNameElement = $("#kym-restaurant-name");
+    //var restaurantNameElement = $("#kym-restaurant-name");
     var restaurantOpenStatusElement = $("#kym-restaurant-open-status");
     var restaurantAddressElement = $("#kym-restaurant-address");
     var restaurantHoursElement = $("#kym-restaurant-hours");
@@ -41,7 +55,7 @@ function populatePageFields(allRestaurantData){
 
     $(document).prop("title", basicRestaurantData["restaurant_name"] + " - KYMenus");
 
-    restaurantNameElement.text(basicRestaurantData["restaurant_name"]);
+    //restaurantNameElement.text(basicRestaurantData["restaurant_name"]);
 
     restaurantOpenStatusElement.text(determineOperatingStatus(restaurantHoursData));
 
@@ -51,7 +65,16 @@ function populatePageFields(allRestaurantData){
     
     restaurantHoursData.forEach(dataElement => {
         var newHoursCard = $("<div>", {
-            "class": "card"
+            "class": "card kym-hours-entry-card",
+            "id": "kym-hours-card-" + dataElement["day_of_week"]
+        });
+
+        var newHoursCardRow = $("<div>", {
+            "class": "row"
+        });
+
+        var newHoursCardCol = $("<div>", {
+            "class": "col-xs-12 col-sm-12 col-md-12 col-lg-6 col-xl-6"
         });
 
         var newHoursCardBody = $("<div>", {
@@ -69,8 +92,16 @@ function populatePageFields(allRestaurantData){
         newHoursCardTitle.text(dataElement["day_of_week"]);
         newHoursCardText.text(convertToPreferredTime(dataElement["OpenTime"]) + " - " + convertToPreferredTime(dataElement["CloseTime"]));
 
-        newHoursCardBody.append(newHoursCardTitle);
-        newHoursCardBody.append(newHoursCardText);
+        var dayOfWeekCol = newHoursCardCol.clone();
+        dayOfWeekCol.append(newHoursCardTitle);
+
+        var hoursCol = newHoursCardCol.clone();
+        hoursCol.append(newHoursCardText);
+
+        newHoursCardRow.append(dayOfWeekCol);
+        newHoursCardRow.append(hoursCol);
+
+        newHoursCardBody.append(newHoursCardRow);
 
         newHoursCard.append(newHoursCardBody);
 
@@ -78,11 +109,12 @@ function populatePageFields(allRestaurantData){
     });
 
     var restaurantCategoryElementTemplate = $("<div>", {
-        "class": "card"
+        "class": "card kym-menu-category-card"
     });
 
     restaurantMenuData.forEach(dataElement => { 
-        var currentRestaurantCategoryCard = restaurantMenuElement.find("div[data-category='" + dataElement["MenuSection"].replace("'", "_") + "']");      // Escaping the field, because single quotes break this. :/ 
+        var newRestaurantCategoryElementSafeName = dataElement["MenuSection"].replace("'", "_").replace(/\s/g, "_");
+        var currentRestaurantCategoryCard = restaurantMenuElement.find("div[data-category='" + newRestaurantCategoryElementSafeName + "']");
 
         if (currentRestaurantCategoryCard.length > 0){
             var existingRestaurantCategoryBody = currentRestaurantCategoryCard.find(".card-body").first();
@@ -91,14 +123,19 @@ function populatePageFields(allRestaurantData){
         }else {
             var newRestaurantCategoryElement = restaurantCategoryElementTemplate.clone();
             var newRestaurantCategoryElementHeader = $("<div>", {
-                "class": "card-header"
+                "class": "card-header",
+                "data-toggle": "collapse",
+                "data-target": "#kym-menu-category-" + newRestaurantCategoryElementSafeName,
+                "aria-expanded": false,
+                "aira-controls": "#kym-menu-category-" + newRestaurantCategoryElementSafeName
             });
 
             var newRestaurantCategoryElementBody = $("<div>", {
-                "class": "card-body"
+                "class": "card-body collapse",
+                "id": "kym-menu-category-" + newRestaurantCategoryElementSafeName
             });
 
-            newRestaurantCategoryElement.attr("data-category", dataElement["MenuSection"].replace("'", "_"));
+            newRestaurantCategoryElement.attr("data-category", newRestaurantCategoryElementSafeName);
             newRestaurantCategoryElementHeader.text(dataElement["MenuSection"]);
             newRestaurantCategoryElementBody.append(generateMenuItemCard(dataElement));
             
@@ -114,7 +151,7 @@ function populatePageFields(allRestaurantData){
 
 function generateMenuItemCard(specifiedRestaurantMenuData){    
     var newMenuItemCard = $("<div>", {
-        "class": "card",
+        "class": "card kym-menu-item-card",
         "data-menu-item": specifiedRestaurantMenuData["Name"]
     });
 
