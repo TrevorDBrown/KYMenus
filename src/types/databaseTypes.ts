@@ -1,6 +1,6 @@
 /*
     KYMenus
-    (c)2020 Trevor D. Brown. All rights reserved.
+    (c)2020-2021 Trevor D. Brown. All rights reserved.
     
     databaseTypes.ts - the interfaces and types used within the service for database utilization.
 */

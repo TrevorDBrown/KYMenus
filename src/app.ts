@@ -1,6 +1,6 @@
 /*
     KYMenus
-    (c)2020 Trevor D. Brown. All rights reserved.
+    (c)2020-2021 Trevor D. Brown. All rights reserved.
     
     app.ts - the entry point for the application.
 */

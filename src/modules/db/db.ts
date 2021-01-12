@@ -1,6 +1,6 @@
 /*
     KYMenus
-    (c)2020 Trevor D. Brown. All rights reserved.
+    (c)2020-2021 Trevor D. Brown. All rights reserved.
     
     db.ts - the local database interface for the service.
     Note: this interface uses a query lookup system, to help prevent SQL injection.
