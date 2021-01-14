@@ -47,16 +47,22 @@ app.get('/restaurants', (req, res) => {
 });
 
 app.get('/restaurants/:RestaurantPublicID', (req, res) => {
-    var responseFromGenerateRestaurantPage: {status?: string, error?: string, html?: string} = uiModule.generateRestaurantPage();
+    getRestaurantData(req.params.RestaurantPublicID, (status: string, queryResponse: QueryResult[], error: string) => { 
+        console.log(status);
 
-    // TODO: break out api endpoint function for getting restaurant data. Create new file for data inquiry, call from endpoint for api and here...
-    if (responseFromGenerateRestaurantPage.html){
-        res.status(200).send(responseFromGenerateRestaurantPage.html);
-    }else{
-        res.status(404).send("File not found.");
-    }
+        if (status == "Success"){
+            var responseFromGenerateRestaurantPage: {status?: string, error?: string, html?: string} = uiModule.generateRestaurantPage(queryResponse);
+    
+            if (responseFromGenerateRestaurantPage.html){
+                res.status(200).send(responseFromGenerateRestaurantPage.html);
+            }else{
+                res.status(404).send("File not found.");
+            }
+        }else{
+            res.status(404).send("File not found.");
+        }
+    });
 
-    //res.status(200).sendFile(path.join(__dirname, './../../ui/client/restaurant-template.html'));
 });
 
 /* 
@@ -93,69 +99,16 @@ app.post('/api/getRestaurantByPublicID', (req, res) => {
 
         res.status(400).send(response);
     }else {
-        let response: {status: string; queryResponse: QueryResult[]; error: string};
-        var input: [{field: string; value: string;}];
+        getRestaurantData(req.body.restaurantPublicID, (status: string, queryResponse: QueryResult[], error: string) => {
+            let response: {status: string, queryResponse: QueryResult[], error: string} = {
+                status: status,
+                queryResponse: queryResponse,
+                error: error
+            };
 
-        async.series([
-            function (callback) {
-                input = [{
-                    field: "RestaurantPublicID",
-                    value: req.body.restaurantPublicID
-                }];
-
-                dbModule.executeQuery("GetRestaurantByRestaurantPublicID", (requestStatus: string, queryResults: QueryResult, error: Error) => {
-                    if (!error){
-                        response = {
-                            status: "Success",
-                            queryResponse: [queryResults],
-                            error: ""
-                        }
-                        
-                        callback(null);
-                    }else{
-                        callback(error);
-                    }
-                },
-                input);
-            },
-            function (callback) {
-                input = [{
-                    field: "RestaurantPublicID",
-                    value: req.body.restaurantPublicID
-                }];
-
-                dbModule.executeQuery("GetHoursByRestaurantPublicID", (requestStatus: string, queryResults: QueryResult, error: Error) => {
-                    if (!error){
-                        response.queryResponse.push(queryResults);
-                        callback(null);
-                    }else{
-                        callback(error);
-                    }
-                },
-                input);
-            },
-            function (callback) {
-                input = [{
-                    field: "RestaurantPublicID",
-                    value: req.body.restaurantPublicID
-                }];
-
-                dbModule.executeQuery("GetMenusWithMenuItemsByRestaurantPublicID", (requestStatus: string, queryResults: QueryResult, error: Error) => {
-                    if (!error){
-                        response.queryResponse.push(queryResults);
-                        callback(null);
-                    }else{
-                        callback(error);
-                    }
-                },
-                input);
-            }
-        ], function(error){
-            if (!error) {
+            if (status == "Success"){
                 res.status(200).send(response);
             }else{
-                response["status"] = "Error";
-                response["error"] = error.message;
                 res.status(500).send(response);
             }
         });
@@ -198,3 +151,86 @@ app.get('/api/getMenusWithMenuItemsByRestaurant', (req, res) => {
 app.listen(3000, () => {
     console.log("KYMenus is running on port 3000.");
 });
+
+function getRestaurantData(restaurantPublicID: string, callback: (status: string, queryResponse: QueryResult[], error: string) => void): void {
+    let response: {status: string; queryResponse: QueryResult[]; error: string};
+    var input: [{field: string; value: string;}];
+
+    async.series([
+        function (callback) {
+            input = [{
+                field: "RestaurantPublicID",
+                value: restaurantPublicID
+            }];
+
+            dbModule.executeQuery("GetRestaurantByRestaurantPublicID", (requestStatus: string, queryResults: QueryResult, error: Error) => {
+                if (!error){
+                    
+                    // TODO: implement better error handling here.
+                    if (queryResults.queryResults && queryResults.queryResults.length > 0){
+                        response = {
+                            status: "Success",
+                            queryResponse: [queryResults],
+                            error: ""
+                        }
+                        
+                        callback(null); 
+                    }else{
+                        response = {
+                            status: "Error",
+                            queryResponse: [queryResults],
+                            error: "Restaurant not found."
+                        }
+
+                        callback(new Error("Restaurant not found."));
+                    }
+                    
+                }else{
+                    callback(error);
+                }
+            },
+            input);
+        },
+        function (callback) {
+            input = [{
+                field: "RestaurantPublicID",
+                value: restaurantPublicID
+            }];
+
+            dbModule.executeQuery("GetHoursByRestaurantPublicID", (requestStatus: string, queryResults: QueryResult, error: Error) => {
+                if (!error){
+                    response.queryResponse.push(queryResults);
+                    callback(null);
+                }else{
+                    callback(error);
+                }
+            },
+            input);
+        },
+        function (callback) {
+            input = [{
+                field: "RestaurantPublicID",
+                value: restaurantPublicID
+            }];
+
+            dbModule.executeQuery("GetMenusWithMenuItemsByRestaurantPublicID", (requestStatus: string, queryResults: QueryResult, error: Error) => {
+                if (!error){
+                    response.queryResponse.push(queryResults);
+                    callback(null);
+                }else{
+                    callback(error);
+                }
+            },
+            input);
+        }
+    ], function(error){
+        if (!error) {
+            callback(response.status, response.queryResponse, response.error);
+        }else{
+            response["status"] = "Error";
+            response["error"] = error.message;
+            callback(response.status, response.queryResponse, response.error);
+        }
+    });
+
+}
