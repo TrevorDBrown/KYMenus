@@ -46,10 +46,8 @@ app.get('/restaurants', (req, res) => {
     res.status(200).sendFile(path.join(__dirname, './../../ui/client/restaurants.html'));
 });
 
-app.get('/restaurants/:RestaurantPublicID', (req, res) => {
-    getRestaurantData(req.params.RestaurantPublicID, (status: string, queryResponse: QueryResult[], error: string) => { 
-        console.log(status);
-
+app.get('/restaurants/:RestaurantUniqueID', (req, res) => {
+    getRestaurantData(req.params.RestaurantUniqueID, (status: string, queryResponse: QueryResult[], error: string) => { 
         if (status == "Success"){
             var responseFromGenerateRestaurantPage: {status?: string, error?: string, html?: string} = uiModule.generateRestaurantPage(queryResponse);
     
@@ -152,37 +150,65 @@ app.listen(3000, () => {
     console.log("KYMenus is running on port 3000.");
 });
 
-function getRestaurantData(restaurantPublicID: string, callback: (status: string, queryResponse: QueryResult[], error: string) => void): void {
+function getRestaurantData(restaurantUniqueID: string, callback: (status: string, queryResponse: QueryResult[], error: string) => void): void {
     let response: {status: string; queryResponse: QueryResult[]; error: string};
     var input: [{field: string; value: string;}];
+    var restaurantPublicID: string = "";
 
     async.series([
         function (callback) {
             input = [{
                 field: "RestaurantPublicID",
-                value: restaurantPublicID
+                value: restaurantUniqueID
             }];
 
             dbModule.executeQuery("GetRestaurantByRestaurantPublicID", (requestStatus: string, queryResults: QueryResult, error: Error) => {
                 if (!error){
-                    
                     // TODO: implement better error handling here.
                     if (queryResults.queryResults && queryResults.queryResults.length > 0){
                         response = {
                             status: "Success",
                             queryResponse: [queryResults],
                             error: ""
-                        }
+                        };
+
+                        restaurantPublicID = restaurantUniqueID;
                         
                         callback(null); 
                     }else{
-                        response = {
-                            status: "Error",
-                            queryResponse: [queryResults],
-                            error: "Restaurant not found."
-                        }
+                        input = [{
+                            field: "RestaurantShorthand",
+                            value: restaurantUniqueID
+                        }];
 
-                        callback(new Error("Restaurant not found."));
+                        dbModule.executeQuery("GetRestaurantByRestaurantShorthand", (requestStatus: string, queryResults: QueryResult, error: Error) => { 
+                            if (!error){
+                                if (queryResults.queryResults && queryResults.queryResults.length > 0){
+                                    response = {
+                                        status: "Success",
+                                        queryResponse: [queryResults],
+                                        error: ""
+                                    };
+                                    
+                                    // Retrieve the Restaurant Public ID for remaining queries.
+                                    var responseAsJSON = JSON.parse(JSON.stringify(queryResults.queryResults[0]));
+                                    restaurantPublicID = responseAsJSON.restaurant_public_id;
+
+                                    callback(null);
+                                }else{
+                                    response = {
+                                        status: "Error",
+                                        queryResponse: [queryResults],
+                                        error: "Restaurant not found."
+                                    }
+            
+                                    callback(new Error("Restaurant not found."));
+                                }
+                            }else{
+                                callback(error);
+                            }
+                        },
+                        input);
                     }
                     
                 }else{
@@ -214,6 +240,22 @@ function getRestaurantData(restaurantPublicID: string, callback: (status: string
             }];
 
             dbModule.executeQuery("GetMenusWithMenuItemsByRestaurantPublicID", (requestStatus: string, queryResults: QueryResult, error: Error) => {
+                if (!error){
+                    response.queryResponse.push(queryResults);
+                    callback(null);
+                }else{
+                    callback(error);
+                }
+            },
+            input);
+        },
+        function (callback){
+            input = [{
+                field: "RestaurantPublicID",
+                value: restaurantPublicID
+            }];
+
+            dbModule.executeQuery("GetExtendedDetailsByRestaurantPublicID", (requestStatus: string, queryResults: QueryResult, error: Error) => {
                 if (!error){
                     response.queryResponse.push(queryResults);
                     callback(null);
