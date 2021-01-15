@@ -1,27 +1,31 @@
-$(() => {
-    // getRestaurantData("0b535283-db14-4cde-8e36-33a72c8cc37e").then(function(restaurantData){
-    //     if (restaurantData){
-    //         console.log(restaurantData);
-    //     }
-    // }).then(function(error){
-    //     refitFooter();
-    // });
+/*
+    KYMenus
+    (c)2020-2021 Trevor D. Brown. All rights reserved.
     
-    refitFooter();
+    restaurant-instance.js - client-side JS for manipulating the UI for restaurant pages.
+*/
 
+$(() => { 
+    // Position the footer
+    refitFooter();
 });
 
 function refitFooter(){
+    // Get the footer element.
     var footerElement = $("#kym-footer");
 
+    // Determine the window's height.
     var windowHeight = $(window).height();
+
+    // Determine the content's height.
     var headerHeight = $("#kym-header").height();
     var bodyHeight = $("#kym-body").height();
     var footerHeight = footerElement.height();
+    var contentHeight = headerHeight + bodyHeight + footerHeight;
 
-    var sumOfElementHeights = headerHeight + bodyHeight + footerHeight;
-
-    if (sumOfElementHeights >= windowHeight){
+    // If the content's height is greater than the window's height, position the footer as dynamic.
+    // Otherwise, make the footer fixed.
+    if (contentHeight >= windowHeight){
         footerElement.removeClass("footer-fixed");
     }else{
         if (!footerElement.hasClass("footer-fixed")){
@@ -29,14 +33,3 @@ function refitFooter(){
         }
     }
 }
-
-// function getRestaurantData(restaurantPublicID){
-//     return $.ajax({
-//         'async': true,
-//         'url': "./../api/getRestaurantByPublicID",
-//         'data': {
-//           'restaurantPublicID': restaurantPublicID
-//         },
-//         'type': "POST"
-//     });
-// }
