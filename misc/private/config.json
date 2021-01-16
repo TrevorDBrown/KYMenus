@@ -3,6 +3,14 @@
         "settingName": "dbAccess",
         "parameters": [
             {
+                "parameterName": "host",
+                "value": "example.com"
+            },
+            {
+                "parameterName": "port",
+                "value": "3306"
+            },
+            {
                 "parameterName": "username",
                 "value": "Example Username"
             },
@@ -17,15 +25,15 @@
         "parameters": [
             {
                 "parameterName": "apiPort",
-                "value": 3000
+                "value": "3000"
             },
             {
                 "parameterName": "clientUIPort",
-                "value": 3001
+                "value": "3001"
             },
             {
                 "parameterName": "adminUIPort",
-                "value": 3002
+                "value": "3002"
             }
         ]
     }
