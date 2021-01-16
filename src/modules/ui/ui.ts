@@ -2,14 +2,14 @@
     KYMenus
     (c)2020-2021 Trevor D. Brown. All rights reserved.
     
-    ui.ts - component for UI assembly.
+    ui.ts - TypeScript for UI assembly.
 */
 
 import * as cheerio from 'cheerio';
 import * as path from 'path';
 import * as fs from 'fs';
 
-function prepareBaseTemplate(): {baseTemplate?: string, error?: string} {
+function prepareRestaurantInstanceBaseTemplate(): {baseTemplate?: string, error?: string} {
     var response: {baseTemplate?: string, error?: string} = {};
 
     var baseTemplate: Buffer = fs.readFileSync(path.join(__dirname, './../../support/ui/restaurant-template.html'));
@@ -47,19 +47,10 @@ function determineOperatingStatus(restaurantHoursData: any): string {
         if (!entryFound){
             if (dataElement["day_of_week"] == dayOfWeek){
                 entryFound = true;
-                
-                // TODO: figure out better way to do this date conversion...
-                var startTime = new Date("1/1/2000 " + dataElement["OpenTime"]);
-                var endTime = new Date("1/1/2000 " + dataElement["CloseTime"]);
+
+                var startTime = new Date(currentDateTime.getMonth() + "/" + currentDateTime.getDate() + "/" + currentDateTime.getFullYear() + " " + dataElement["OpenTime"]);
+                var endTime = new Date(currentDateTime.getMonth() + "/" + currentDateTime.getDate() + "/" + currentDateTime.getFullYear() + " " + dataElement["CloseTime"]);
                 var rangeOperatingStatus = dataElement["OperatingStatus"];
-
-                startTime.setFullYear(currentDateTime.getFullYear());
-                startTime.setMonth(currentDateTime.getMonth());
-                startTime.setDate(currentDateTime.getDate());
-
-                endTime.setFullYear(currentDateTime.getFullYear());
-                endTime.setMonth(currentDateTime.getMonth());
-                endTime.setDate(currentDateTime.getDate());
 
                 if (startTime <= currentDateTime && currentDateTime <= endTime){
                     operatingStatusString = rangeOperatingStatus;
@@ -114,6 +105,13 @@ function generateContactInfoCard(restaurantContactInfoElement: cheerio.Cheerio, 
             menuLink.attr("target", "_blank");
             menuLink.text("Menu");
             restaurantContactInfoElement.append(menuLink);
+            restaurantContactInfoElement.append(breakElement.clone());
+        }else if (contactInfoEntry.category_name.startsWith("Online Ordering")){
+            var onlineOrderLink = $("<a>");
+            onlineOrderLink.attr("href", contactInfoEntry.category_value);
+            onlineOrderLink.attr("target", "_blank");
+            onlineOrderLink.text("Order Online");
+            restaurantContactInfoElement.append(onlineOrderLink);
             restaurantContactInfoElement.append(breakElement.clone());
         }
     });
@@ -215,20 +213,46 @@ function generateMenuItemCard(specifiedRestaurantMenuData: any): cheerio.Cheerio
     newMenuItemCard.addClass("card kym-menu-item-card");
     newMenuItemCard.prop("data-menu-item", specifiedRestaurantMenuData["Name"]);
 
-    var newMenuItemCardBody = $("<div>");
+    var newMenuItemCardBody: cheerio.Cheerio = $("<div>");
     newMenuItemCardBody.addClass("card-body");
 
-    var newMenuItemCardTitle = $("<h4>");
+    var newMenuItemCardTitle: cheerio.Cheerio = $("<h4>");
     newMenuItemCardTitle.addClass("card-title");
     
-    var newMenuItemCardText = $("<p>");
+    var newMenuItemCardText: cheerio.Cheerio = $("<p>");
     newMenuItemCardText.addClass("card-text");
 
     newMenuItemCardTitle.text(specifiedRestaurantMenuData["Name"]);
     newMenuItemCardText.text(convertToPrice(parseFloat(specifiedRestaurantMenuData["Price"])));
 
-    newMenuItemCardBody.append(newMenuItemCardTitle);
-    newMenuItemCardBody.append(newMenuItemCardText);
+    if (specifiedRestaurantMenuData.Description){
+        var newMenuItemCardRow = $("<div>");
+        newMenuItemCardRow.addClass("row");
+
+        var newMenuItemCardLeftCol = $("<div>");
+        newMenuItemCardLeftCol.addClass("col-xs-12 col-sm-12 col-md-12 col-lg-4 col-xl-4");
+
+        var newMenuItemCardRightCol = $("<div>");
+        newMenuItemCardRightCol.addClass("col-xs-12 col-sm-12 col-md-12 col-lg-8 col-xl-8");
+
+        var newMenuItemCardDescription: cheerio.Cheerio = $("<p>");
+        newMenuItemCardDescription.addClass("card-text");
+        newMenuItemCardDescription.text(specifiedRestaurantMenuData["Description"]);
+
+        newMenuItemCardLeftCol.append(newMenuItemCardTitle);
+        newMenuItemCardLeftCol.append(newMenuItemCardText);
+
+        newMenuItemCardRightCol.append(newMenuItemCardDescription);
+
+        newMenuItemCardRow.append(newMenuItemCardLeftCol);
+        newMenuItemCardRow.append(newMenuItemCardRightCol);
+
+        newMenuItemCardBody.append(newMenuItemCardRow);
+
+    }else{
+        newMenuItemCardBody.append(newMenuItemCardTitle);
+        newMenuItemCardBody.append(newMenuItemCardText);
+    }
 
     newMenuItemCard.append(newMenuItemCardBody);
 
@@ -273,7 +297,7 @@ function injectRestaurantData(restaurantData: any, baseTemplate: string): string
 export function generateRestaurantPage(restaurantData: any): {status?: string, error?: string, html?: string} {
     var response: {status?: string, error?: string, html?: string} = {};
 
-    var responseFromBaseTemplatePrep: {baseTemplate?: string, error?: string} = prepareBaseTemplate();
+    var responseFromBaseTemplatePrep: {baseTemplate?: string, error?: string} = prepareRestaurantInstanceBaseTemplate();
 
     if (responseFromBaseTemplatePrep.baseTemplate){
         var populatedTemplate: string = injectRestaurantData(restaurantData, responseFromBaseTemplatePrep.baseTemplate);
