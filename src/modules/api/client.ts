@@ -264,6 +264,22 @@ function getRestaurantData(restaurantUniqueID: string, callback: (status: string
                 }
             },
             input);
+        },
+        function (callback){
+            input = [{
+                field: "RestaurantPublicID",
+                value: restaurantPublicID
+            }];
+
+            dbModule.executeQuery("GetCategoriesByRestaurantPublicID", (requestStatus: string, queryResults: QueryResult, error: Error) => {
+                if (!error){
+                    response.queryResponse.push(queryResults);
+                    callback(null);
+                }else{
+                    callback(error);
+                }
+            },
+            input);
         }
     ], function(error){
         if (!error) {
