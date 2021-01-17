@@ -24,18 +24,18 @@ function prepareRestaurantInstanceBaseTemplate(): {baseTemplate?: string, error?
 
 }
 
-function convertToPrice(floatValue: number): string{
+function convertToPriceString(floatValue: number): string{
     return "$" + floatValue.toFixed(2);
 }
 
-function convertToPreferredTime(timeString: string): string{
+function convertToPreferredTimeString(timeString: string): string{
     // Format the string to: MM/DD/YYYY HH:MI:SS AM/PM
     var baseDateTimeString: string = new Date("1/1/2000 " + timeString).toLocaleTimeString("en-us");
     // Remove the seconds from the date/time string and return.
     return baseDateTimeString.substring(baseDateTimeString.length - 6, 0) + baseDateTimeString.substring(baseDateTimeString.length, baseDateTimeString.length - 3);
 }
 
-function determineOperatingStatus(restaurantHoursData: any): string {
+function generateOperatingStatusString(restaurantHoursData: any): string {
     var operatingStatusString = "";
 
     var currentDateTime = new Date();
@@ -48,8 +48,9 @@ function determineOperatingStatus(restaurantHoursData: any): string {
             if (dataElement["day_of_week"] == dayOfWeek){
                 entryFound = true;
 
-                var startTime = new Date(currentDateTime.getMonth() + "/" + currentDateTime.getDate() + "/" + currentDateTime.getFullYear() + " " + dataElement["OpenTime"]);
-                var endTime = new Date(currentDateTime.getMonth() + "/" + currentDateTime.getDate() + "/" + currentDateTime.getFullYear() + " " + dataElement["CloseTime"]);
+                // TODO: is the a better way to handle this??
+                var startTime = new Date("\"" + (currentDateTime.getMonth() + 1).toString() + "/" + currentDateTime.getDate().toString() + "/" + currentDateTime.getFullYear().toString() + "\" " + dataElement["OpenTime"]);
+                var endTime = new Date("\"" + (currentDateTime.getMonth() + 1).toString() + "/" + currentDateTime.getDate().toString() + "/" + currentDateTime.getFullYear().toString() + "\" " + dataElement["CloseTime"]);
                 var rangeOperatingStatus = dataElement["OperatingStatus"];
 
                 if (startTime <= currentDateTime && currentDateTime <= endTime){
@@ -66,103 +67,155 @@ function determineOperatingStatus(restaurantHoursData: any): string {
         }
     });
 
-    if (!entryFound){
-        operatingStatusString = "Unknown";
-    }
-
     return operatingStatusString;
 
 }
 
-function generateContactInfoCard(restaurantContactInfoElement: cheerio.Cheerio, restaurantContactInfoData: any): cheerio.Cheerio {
+function generateAddressInfoCard(restaurantAddressElement: cheerio.Cheerio, basicRestaurantData: any): cheerio.Cheerio {
     var $: cheerio.Root = cheerio.load("");
-
     var breakElement = $("<br />");
 
-    restaurantContactInfoData.forEach((contactInfoEntry: any) => {        
-        if (contactInfoEntry.category_name.startsWith("Phone")){
-            var phoneLink = $("<a>");
-            phoneLink.attr("href", "tel:1" + contactInfoEntry.category_value.replaceAll("-", ""));
-            phoneLink.text(contactInfoEntry.category_value);
-            restaurantContactInfoElement.append(phoneLink);
+    if (!basicRestaurantData.address){
+        var newRestaurantAddressInfoNotFoundErrorElement: cheerio.Cheerio = $("<h5>");
+        newRestaurantAddressInfoNotFoundErrorElement.text("No Address Information Available.");
+        restaurantAddressElement.append(newRestaurantAddressInfoNotFoundErrorElement);
+    }else{
+        restaurantAddressElement.append(basicRestaurantData["address"]);
+        restaurantAddressElement.append(breakElement.clone());
+        restaurantAddressElement.append(basicRestaurantData["city_name"] + ", " + basicRestaurantData["state_name"] + " " + basicRestaurantData["zip_code"]);
+    }
+
+    return restaurantAddressElement;
+}
+
+function generateContactInfoCard(restaurantContactInfoElement: cheerio.Cheerio, restaurantContactInfoData: any): cheerio.Cheerio {
+    var $: cheerio.Root = cheerio.load("");
+    var breakElement = $("<br />");
+
+    if (restaurantContactInfoData.length <= 0){
+        var newRestaurantContactInfoNotFoundErrorElement: cheerio.Cheerio = $("<h5>");
+        newRestaurantContactInfoNotFoundErrorElement.text("No Contact Information Available.");
+        restaurantContactInfoElement.append(newRestaurantContactInfoNotFoundErrorElement);
+    }else{
+        restaurantContactInfoData.forEach((contactInfoEntry: any) => {        
+            var baseLink: cheerio.Cheerio = $("<a>");
+            var hrefData: string = "";
+
+            // Determine what type of link will be displayed.
+            switch (contactInfoEntry.category_name){
+                case "Phone":
+                    hrefData = "tel:1" + contactInfoEntry.category_value.replaceAll("-", "");
+                    break;
+                case "Email":
+                    hrefData = "mailto:" + contactInfoEntry.category_value;
+                    break;
+                case "Website":
+                    hrefData = contactInfoEntry.category_value;
+                    break;
+                case "Online Menu":
+                    hrefData = contactInfoEntry.category_value;
+                    break;
+                case "Online Ordering":
+                    hrefData = contactInfoEntry.category_value;
+                    break;
+            }
+
+            // If the link is defined, then set the href value of the anchor tag.
+            if (hrefData != ""){
+                baseLink.attr("href", hrefData);
+                baseLink.attr("target", "_blank");
+            }
+
+            // Determine if the value will be displayed as custom text, or the actual value.
+            if (contactInfoEntry.display_text){
+                baseLink.text(contactInfoEntry.display_text);
+            }else{
+                baseLink.text(contactInfoEntry.category_value);
+            }
+
+            // Add to the parent element, along with a break tag.
+            restaurantContactInfoElement.append(baseLink);
             restaurantContactInfoElement.append(breakElement.clone());
-        }else if (contactInfoEntry.category_name.startsWith("Email")){
-            var emailLink = $("<a>");
-            emailLink.attr("href", "mailto:" + contactInfoEntry.category_value);
-            emailLink.text("Email (" + contactInfoEntry.category_value + ")");
-            restaurantContactInfoElement.append(emailLink);
-            restaurantContactInfoElement.append(breakElement.clone());
-        }else if (contactInfoEntry.category_name.startsWith("Website")){
-            var webLink = $("<a>");
-            webLink.attr("href", contactInfoEntry.category_value);
-            webLink.attr("target", "_blank");
-            webLink.text("Website");
-            restaurantContactInfoElement.append(webLink);
-            restaurantContactInfoElement.append(breakElement.clone());
-        }else if (contactInfoEntry.category_name.startsWith("Online Menu")){
-            var menuLink = $("<a>");
-            menuLink.attr("href", contactInfoEntry.category_value);
-            menuLink.attr("target", "_blank");
-            menuLink.text("Menu");
-            restaurantContactInfoElement.append(menuLink);
-            restaurantContactInfoElement.append(breakElement.clone());
-        }else if (contactInfoEntry.category_name.startsWith("Online Ordering")){
-            var onlineOrderLink = $("<a>");
-            onlineOrderLink.attr("href", contactInfoEntry.category_value);
-            onlineOrderLink.attr("target", "_blank");
-            onlineOrderLink.text("Order Online");
-            restaurantContactInfoElement.append(onlineOrderLink);
-            restaurantContactInfoElement.append(breakElement.clone());
-        }
-    });
+        
+        });
+    }
 
     return restaurantContactInfoElement;
 }
 
-function generateOperatingHoursCards(parentElement: cheerio.Cheerio, operatingHoursData: any): cheerio.Cheerio{
+function generateCategoriesCards (categoriesElement: cheerio.Cheerio, categoriesData: any): cheerio.Cheerio {
     var $: cheerio.Root = cheerio.load("");
 
-    operatingHoursData.forEach((dataElement: any) => {
+    var breakElement: cheerio.Cheerio = $("<br />");
 
-        var newHoursCard: cheerio.Cheerio = $("<div>");
-        newHoursCard.addClass("card kym-hours-entry-card");
-        newHoursCard.prop("id", "kym-hours-card-" + dataElement["day_of_week"]);
+    if (categoriesData.length <= 0){
+        var newRestaurantCategoriesNotFoundErrorElement: cheerio.Cheerio = $("<h5>");
+        newRestaurantCategoriesNotFoundErrorElement.text("No Categories Available.");
+        categoriesElement.append(newRestaurantCategoriesNotFoundErrorElement);
+    }else{
 
-        var newHoursCardRow = $("<div>");
-        newHoursCardRow.addClass("row");
+        categoriesData.forEach((dataElement: any) => {
+            if (dataElement.display_category == 1){
+                categoriesElement.append(dataElement.category_name);
+                categoriesElement.append(breakElement.clone());
+            } 
+        });
 
-        var newHoursCardCol = $("<div>");
-        newHoursCardCol.addClass("col-xs-12 col-sm-12 col-md-12 col-lg-6 col-xl-6");
+    }
 
-        var newHoursCardBody = $("<div>");
-        newHoursCardBody.addClass("card-body");
+    return categoriesElement;
+}
 
-        var newHoursCardTitle = $("<h4>");
-        newHoursCardTitle.addClass("card-title");
+function generateOperatingHoursCards(operatingHoursElement: cheerio.Cheerio, operatingHoursData: any): cheerio.Cheerio{
+    var $: cheerio.Root = cheerio.load("");
 
-        var newHoursCardText = $("<p>");
-        newHoursCardText.addClass("card-text");
+    if (operatingHoursData.length <= 0){
+        var newRestaurantHoursNotFoundErrorElement: cheerio.Cheerio = $("<h5>");
+        newRestaurantHoursNotFoundErrorElement.text("No Hours Available.");
+        operatingHoursElement.append(newRestaurantHoursNotFoundErrorElement);
+    }else{
+        operatingHoursData.forEach((dataElement: any) => {
 
-        newHoursCardTitle.text(dataElement["day_of_week"]);
-        newHoursCardText.text(convertToPreferredTime(dataElement["OpenTime"]) + " - " + convertToPreferredTime(dataElement["CloseTime"]));
+            var newHoursCard: cheerio.Cheerio = $("<div>");
+            newHoursCard.addClass("card kym-hours-entry-card");
+            newHoursCard.prop("id", "kym-hours-card-" + dataElement["day_of_week"]);
+    
+            var newHoursCardRow = $("<div>");
+            newHoursCardRow.addClass("row");
+    
+            var newHoursCardCol = $("<div>");
+            newHoursCardCol.addClass("col-xs-12 col-sm-12 col-md-12 col-lg-6 col-xl-6");
+    
+            var newHoursCardBody = $("<div>");
+            newHoursCardBody.addClass("card-body");
+    
+            var newHoursCardTitle = $("<h4>");
+            newHoursCardTitle.addClass("card-title");
+    
+            var newHoursCardText = $("<p>");
+            newHoursCardText.addClass("card-text");
+    
+            newHoursCardTitle.text(dataElement["day_of_week"]);
+            newHoursCardText.text(convertToPreferredTimeString(dataElement["OpenTime"]) + " - " + convertToPreferredTimeString(dataElement["CloseTime"]));
+    
+            var dayOfWeekCol = newHoursCardCol.clone();
+            dayOfWeekCol.append(newHoursCardTitle);
+    
+            var hoursCol = newHoursCardCol.clone();
+            hoursCol.append(newHoursCardText);
+    
+            newHoursCardRow.append(dayOfWeekCol);
+            newHoursCardRow.append(hoursCol);
+    
+            newHoursCardBody.append(newHoursCardRow);
+    
+            newHoursCard.append(newHoursCardBody);
+    
+            operatingHoursElement.append(newHoursCard);
+        });
+    }
 
-        var dayOfWeekCol = newHoursCardCol.clone();
-        dayOfWeekCol.append(newHoursCardTitle);
-
-        var hoursCol = newHoursCardCol.clone();
-        hoursCol.append(newHoursCardText);
-
-        newHoursCardRow.append(dayOfWeekCol);
-        newHoursCardRow.append(hoursCol);
-
-        newHoursCardBody.append(newHoursCardRow);
-
-        newHoursCard.append(newHoursCardBody);
-
-        parentElement.append(newHoursCard);
-    });
-
-    return parentElement;
+    return operatingHoursElement;
 }
 
 function generateMenuCard(restaurantMenuElement: cheerio.Cheerio, restaurantMenuData: any): cheerio.Cheerio {
@@ -171,37 +224,43 @@ function generateMenuCard(restaurantMenuElement: cheerio.Cheerio, restaurantMenu
     var restaurantCategoryElementTemplate: cheerio.Cheerio = $("<div>");
     restaurantCategoryElementTemplate.addClass("card kym-menu-category-card");
 
-    restaurantMenuData.forEach((dataElement: any) => { 
-        var newRestaurantCategoryElementSafeName = dataElement["MenuSection"].replace("'", "_").replace(/\s/g, "_");
-        var currentRestaurantCategoryCard = restaurantMenuElement.find("div[data-category='" + newRestaurantCategoryElementSafeName + "']");
+    if (restaurantMenuData.length <= 0){
+        var newRestaurantMenuNotFoundErrorElement: cheerio.Cheerio = $("<h5>");
+        newRestaurantMenuNotFoundErrorElement.text("No Menu Available.");
+        restaurantMenuElement.append(newRestaurantMenuNotFoundErrorElement);
+    }else{
+        restaurantMenuData.forEach((dataElement: any) => { 
+            var newRestaurantCategoryElementSafeName = dataElement["MenuSection"].replace("'", "_").replace(/\s/g, "_");
+            var currentRestaurantCategoryCard = restaurantMenuElement.find("div[data-category='" + newRestaurantCategoryElementSafeName + "']");
 
-        if (currentRestaurantCategoryCard.length > 0){
-            var existingRestaurantCategoryBody = currentRestaurantCategoryCard.find(".card-body").first();
-            existingRestaurantCategoryBody.append($("<br />"));
-            existingRestaurantCategoryBody.append(generateMenuItemCard(dataElement));
-        }else {
-            var newRestaurantCategoryElement = restaurantCategoryElementTemplate.clone();
-            var newRestaurantCategoryElementHeader = $("<div>");
-            newRestaurantCategoryElementHeader.addClass("card-header");
-            newRestaurantCategoryElementHeader.attr("data-toggle", "collapse");
-            newRestaurantCategoryElementHeader.attr("data-target", "#kym-menu-category-" + newRestaurantCategoryElementSafeName);
-            newRestaurantCategoryElementHeader.attr("aira-expanded", "false");
-            newRestaurantCategoryElementHeader.attr("aira-controls", "#kym-menu-category-" + newRestaurantCategoryElementSafeName);
+            if (currentRestaurantCategoryCard.length > 0){
+                var existingRestaurantCategoryBody = currentRestaurantCategoryCard.find(".card-body").first();
+                existingRestaurantCategoryBody.append($("<br />"));
+                existingRestaurantCategoryBody.append(generateMenuItemCard(dataElement));
+            }else {
+                var newRestaurantCategoryElement = restaurantCategoryElementTemplate.clone();
+                var newRestaurantCategoryElementHeader = $("<div>");
+                newRestaurantCategoryElementHeader.addClass("card-header");
+                newRestaurantCategoryElementHeader.attr("data-toggle", "collapse");
+                newRestaurantCategoryElementHeader.attr("data-target", "#kym-menu-category-" + newRestaurantCategoryElementSafeName);
+                newRestaurantCategoryElementHeader.attr("aira-expanded", "false");
+                newRestaurantCategoryElementHeader.attr("aira-controls", "#kym-menu-category-" + newRestaurantCategoryElementSafeName);
 
-            var newRestaurantCategoryElementBody = $("<div>");
-            newRestaurantCategoryElementBody.addClass("card-body collapse");
-            newRestaurantCategoryElementBody.attr("id", "kym-menu-category-" + newRestaurantCategoryElementSafeName);
+                var newRestaurantCategoryElementBody = $("<div>");
+                newRestaurantCategoryElementBody.addClass("card-body collapse");
+                newRestaurantCategoryElementBody.attr("id", "kym-menu-category-" + newRestaurantCategoryElementSafeName);
 
-            newRestaurantCategoryElement.attr("data-category", newRestaurantCategoryElementSafeName);
-            newRestaurantCategoryElementHeader.text(dataElement["MenuSection"]);
-            newRestaurantCategoryElementBody.append(generateMenuItemCard(dataElement));
-            
-            newRestaurantCategoryElement.append(newRestaurantCategoryElementHeader);
-            newRestaurantCategoryElement.append(newRestaurantCategoryElementBody);
+                newRestaurantCategoryElement.attr("data-category", newRestaurantCategoryElementSafeName);
+                newRestaurantCategoryElementHeader.text(dataElement["MenuSection"]);
+                newRestaurantCategoryElementBody.append(generateMenuItemCard(dataElement));
+                
+                newRestaurantCategoryElement.append(newRestaurantCategoryElementHeader);
+                newRestaurantCategoryElement.append(newRestaurantCategoryElementBody);
 
-            restaurantMenuElement.append(newRestaurantCategoryElement);  
-        }
-    });
+                restaurantMenuElement.append(newRestaurantCategoryElement);  
+            }
+        });
+    }
 
     return restaurantMenuElement;
 }
@@ -223,7 +282,7 @@ function generateMenuItemCard(specifiedRestaurantMenuData: any): cheerio.Cheerio
     newMenuItemCardText.addClass("card-text");
 
     newMenuItemCardTitle.text(specifiedRestaurantMenuData["Name"]);
-    newMenuItemCardText.text(convertToPrice(parseFloat(specifiedRestaurantMenuData["Price"])));
+    newMenuItemCardText.text(convertToPriceString(parseFloat(specifiedRestaurantMenuData["Price"])));
 
     if (specifiedRestaurantMenuData.Description){
         var newMenuItemCardRow = $("<div>");
@@ -266,6 +325,7 @@ function injectRestaurantData(restaurantData: any, baseTemplate: string): string
     var restaurantOpenStatusElement = $("#kym-restaurant-open-status");
     var restaurantAddressElement = $("#kym-restaurant-address");
     var restaurantContactInfoElement = $("#kym-restaurant-contact-info");
+    var restaurantCategoriesElement = $("#kym-restaurant-categories");
     var restaurantHoursElement = $("#kym-restaurant-hours");
     var restaurantMenuElement = $("#kym-restaurant-menu");
 
@@ -273,19 +333,20 @@ function injectRestaurantData(restaurantData: any, baseTemplate: string): string
     var restaurantHoursData = restaurantData[1].queryResults;
     var restaurantMenuData = restaurantData[2].queryResults;
     var restaurantContactInfoData = restaurantData[3].queryResults;
+    var restaurantCategoriesData = restaurantData[4].queryResults;
 
     var pageTitle = $("head title");
     pageTitle.text(basicRestaurantData["restaurant_name"] + " - KYMenus");
 
     restaurantNameElement.text(basicRestaurantData["restaurant_name"]);
 
-    restaurantOpenStatusElement.text(determineOperatingStatus(restaurantHoursData));
+    restaurantOpenStatusElement.text(generateOperatingStatusString(restaurantHoursData));
 
-    restaurantAddressElement.append(basicRestaurantData["address"]);
-    restaurantAddressElement.append($("<br />"));
-    restaurantAddressElement.append(basicRestaurantData["city_name"] + ", " + basicRestaurantData["state_name"] + " " + basicRestaurantData["zip_code"]);
+    restaurantAddressElement = generateAddressInfoCard(restaurantAddressElement, basicRestaurantData);
 
     restaurantContactInfoElement = generateContactInfoCard(restaurantContactInfoElement, restaurantContactInfoData);
+
+    restaurantCategoriesElement = generateCategoriesCards(restaurantCategoriesElement, restaurantCategoriesData);
 
     restaurantHoursElement = generateOperatingHoursCards(restaurantHoursElement, restaurantHoursData);
 
