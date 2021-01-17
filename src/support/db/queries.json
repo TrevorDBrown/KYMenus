@@ -48,7 +48,15 @@
     {
         "queryName": "GetExtendedDetailsByRestaurantPublicID",
         "queryType": "SELECT",
-        "queryTemplate": "SELECT redc.category_name, red.detail_value_varchar category_value FROM KYMENUS.RESTAURANT_EXTENDED_DETAIL_CATEGORY redc JOIN KYMENUS.RESTAURANT_EXTENDED_DETAIL red ON (redc.category_id = red.restaurant_extended_detail_category_id) JOIN KYMENUS.RESTAURANT r ON (red.restaurant_id = r.restaurant_id) WHERE r.restaurant_public_id ~RestaurantPublicID",
+        "queryTemplate": "SELECT redc.category_name, red.display_priority, red.display_text, red.detail_value_varchar category_value FROM KYMENUS.RESTAURANT_EXTENDED_DETAIL_CATEGORY redc JOIN KYMENUS.RESTAURANT_EXTENDED_DETAIL red ON (redc.category_id = red.restaurant_extended_detail_category_id) JOIN KYMENUS.RESTAURANT r ON (red.restaurant_id = r.restaurant_id) WHERE r.restaurant_public_id ~RestaurantPublicID ORDER BY red.display_priority",
+        "queryInputs": [
+            "RestaurantPublicID"
+        ]
+    },
+    {
+        "queryName": "GetCategoriesByRestaurantPublicID",
+        "queryType": "SELECT",
+        "queryTemplate": "SELECT rc.category_name, rcrp.display_category FROM KYMENUS.RESTAURANT r JOIN KYMENUS.RESTAURANT_CATEGORY_RESTAURANT_PAIR rcrp ON (r.restaurant_id = rcrp.restaurant_id) JOIN KYMENUS.RESTAURANT_CATEGORY rc ON (rcrp.restaurant_category_id = rc.category_id) WHERE r.restaurant_public_id ~RestaurantPublicID",
         "queryInputs": [
             "RestaurantPublicID"
         ]
