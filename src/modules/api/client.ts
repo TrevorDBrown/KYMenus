@@ -8,8 +8,11 @@
 import path = require('path');
 import express = require('express');
 import async = require('async');
+
 var dbModule = require('./../db/db');
 var uiModule = require('./../ui/ui');
+import * as geolocationModule from './../geo/geolocation';
+
 import { QueryResult } from '../../types/databaseTypes';
 
 const app: express.Application = express();
@@ -69,6 +72,16 @@ app.get('/restaurants/:RestaurantUniqueID', (req, res) => {
 // api - the API Base URL. Making a GET request to this endpoint results in a listing of all public API endpoints.
 app.get('/api/', (req, res) => {
     res.status(200).send("Successful request.");
+});
+
+app.get('/api/geolocationTest', (req, res) => {
+    if (req.query.latitude && req.query.longitude) {
+        getZIPCodeFromGeolocation(<string>req.query.latitude, <string>req.query.longitude, (zipCode) => {
+            res.status(200).send(zipCode);
+        });
+    }else{
+        res.status(400).send("Malformed request.");
+    }
 });
 
 app.get('/api/getAllRestaurants', (req, res) => {
@@ -149,6 +162,12 @@ app.get('/api/getMenusWithMenuItemsByRestaurant', (req, res) => {
 app.listen(3000, () => {
     console.log("KYMenus is running on port 3000.");
 });
+
+function getZIPCodeFromGeolocation(latitude: string, longitude: string, callback: (zipCode: string) => void): void {
+    geolocationModule.convertGeolocationToZIP(latitude, longitude, (zipCode) => {
+        return callback(zipCode);
+    });
+}
 
 function getRestaurantData(restaurantUniqueID: string, callback: (status: string, queryResponse: QueryResult[], error: string) => void): void {
     let response: {status: string; queryResponse: QueryResult[]; error: string};
