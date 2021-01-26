@@ -8,6 +8,7 @@
 $(() => { 
     // Position the footer
     refitFooter();
+    getGeolocationCoordinates();
 });
 
 function refitFooter(){
@@ -32,4 +33,17 @@ function refitFooter(){
             footerElement.addClass("footer-fixed");
         }
     }
+}
+
+function getGeolocationCoordinates(){
+    navigator.geolocation.getCurrentPosition(function(position){
+        console.log(position);
+    },
+    function(error){
+        if (error.code == error.PERMISSION_DENIED){
+            console.log("Geolocation permission denied by user.");
+        }else {
+            console.log(error.code);
+        }
+    });
 }
