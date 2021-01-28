@@ -11,7 +11,7 @@ import * as async from 'async';
 import queryDictionary = require('./../../support/db/queries.json');
 import appConfig = require('./../../private/config.json')
 
-import {DBConnection, Query, QueryResult} from '../../types/databaseTypes';
+import {DBConnection, Query, QueryResult} from '../../types/database-types';
 
 // Query Database
 function queryDatabase (query: Query, dbConnection: mysql.Connection, callback: (requestStatus: string, queryResponse?: QueryResult, error?: Error) => void): void {
