@@ -2,13 +2,12 @@
     KYMenus
     (c)2020-2021 Trevor D. Brown. All rights reserved.
     
-    restaurant.js - JavaScript for handling functions and interface changes shared across all pages within the client interface of KYMenus.
+    general.js - JavaScript for handling functions and interface changes shared across all pages within the client interface of KYMenus.
 */
 
 $(() => { 
     // Position the footer
     refitFooter();
-    getGeolocationCoordinates();
 });
 
 function refitFooter(){
@@ -36,14 +35,37 @@ function refitFooter(){
 }
 
 function getGeolocationCoordinates(){
-    navigator.geolocation.getCurrentPosition(function(position){
-        console.log(position);
-    },
-    function(error){
-        if (error.code == error.PERMISSION_DENIED){
-            console.log("Geolocation permission denied by user.");
-        }else {
-            console.log(error.code);
+    return new Promise(
+        // Resolved promise
+        (resolve) => {
+            var geolocationResponse = {};
+
+            navigator.geolocation.getCurrentPosition(function(position){
+                geolocationResponse.latitude = position.coords.latitude;
+                geolocationResponse.longitude = position.coords.longitude;
+                geolocationResponse.status = "Success";
+        
+                resolve(geolocationResponse);
+            },
+            function(error){
+                geolocationResponse.status = "Error";
+                geolocationResponse.errorCode = error.code;
+        
+                if (error.code == error.PERMISSION_DENIED){
+                    console.log("Geolocation permission denied by user.");
+                }else {
+                    console.log(error.code);
+                }
+        
+                resolve(geolocationResponse);
+            });
+        },
+        // Rejected promise
+        (reject) => {
+            console.log("The promise failed to resolve.");
+            reject(null);
         }
-    });
+    );
+    
+
 }
